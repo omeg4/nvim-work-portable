@@ -1,5 +1,7 @@
 # nvim-work-portable
 
+[![Latest release](https://img.shields.io/github/v/release/omeg4/nvim-work-portable?sort=semver)](https://github.com/omeg4/nvim-work-portable/releases/latest)
+
 A portable, safe-for-work Neovim + Git Bash setup for **Windows 11 + Windows Terminal + Git Bash**, installable by a **standard (non-admin) user** with one command.
 
 It's derived from my personal Neovim config ("Neobruno"), with every plugin reviewed against three rules:
@@ -50,7 +52,7 @@ less install.sh        # optional: read it first
 
 ### Installing a specific version
 
-Releases are git tags such as `v1.0.0`. The full list is on the [tags page](https://github.com/omeg4/nvim-work-portable/tags), or you can run:
+Releases are git tags such as `v1.0.0`. Each release's notes, including what changed and its known limitations, are on the [Releases page](https://github.com/omeg4/nvim-work-portable/releases); the newest is always at [releases/latest](https://github.com/omeg4/nvim-work-portable/releases/latest). You can also see the [tags page](https://github.com/omeg4/nvim-work-portable/tags), or run:
 
 ```bash
 git ls-remote --tags https://github.com/omeg4/nvim-work-portable.git
