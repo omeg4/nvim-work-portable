@@ -33,7 +33,9 @@ To pass options through the pipe, add `-s --` after `bash`:
 curl -fsSL https://raw.githubusercontent.com/omeg4/nvim-work-portable/main/install.sh | bash -s -- --no-font
 ```
 
-When piped, the script clones this repo to `~/.local/src/nvim-work-portable` (or fast-forwards an existing clone), then runs `install.sh` from there. The clone is your working copy for later edits.
+When piped, the script clones this repo to `~/.local/src/nvim-work-portable` (or updates an existing clone), then runs `install.sh` from there. The clone is your working copy for later edits.
+
+This installs the latest version on `main`. To install a fixed version instead, see [Installing a specific version](#installing-a-specific-version).
 
 ### Option 2: clone and run
 
@@ -44,6 +46,47 @@ git clone https://github.com/omeg4/nvim-work-portable.git ~/.local/src/nvim-work
 cd ~/.local/src/nvim-work-portable
 less install.sh        # optional: read it first
 ./install.sh
+```
+
+### Installing a specific version
+
+Releases are git tags such as `v1.0.0`. The full list is on the [tags page](https://github.com/omeg4/nvim-work-portable/tags), or you can run:
+
+```bash
+git ls-remote --tags https://github.com/omeg4/nvim-work-portable.git
+```
+
+To install a specific version with the one-liner, put the tag in **both** places:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/omeg4/nvim-work-portable/v1.0.0/install.sh | NVIM_WORK_REF=v1.0.0 bash
+```
+
+- **The tag in the URL** (`…/v1.0.0/install.sh`) picks which version of the bootstrap script you download and run.
+- **`NVIM_WORK_REF=v1.0.0`** picks which version is cloned and installed. Without it, the bootstrap installs `main`, whichever URL you downloaded it from.
+- **`NVIM_WORK_REF` goes right before `bash`, not before `curl`.** A variable set in front of a command applies only to that command, and it's `bash` that needs it. `NVIM_WORK_REF=v1.0.0 curl … | bash` silently installs `main`.
+
+To pass installer options as well, add `-s --` and the options after `bash`:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/omeg4/nvim-work-portable/v1.0.0/install.sh | NVIM_WORK_REF=v1.0.0 bash -s -- --no-font
+```
+
+Things to know:
+
+- **`NVIM_WORK_REF` takes a tag or a branch name**, not a commit hash. If the version doesn't exist (a typo, say), the installer stops with an error instead of installing something else.
+- **The variable also switches an existing clone.** If `~/.local/src/nvim-work-portable` already exists, the bootstrap fetches, checks out the version you asked for and installs it. A tag checkout is a detached HEAD, which is expected.
+- **Going back to the latest version:** run the plain one-liner again, without `NVIM_WORK_REF`. It switches the clone back to `main` and updates it.
+- **Local edits are never overwritten.** If the checkout can't switch because of uncommitted changes in the clone, the installer prints a warning and installs the clone as it is.
+- **Checking the installed version:** `git -C ~/.local/src/nvim-work-portable describe --tags`. The bootstrap also prints `Installing version: …` before it starts.
+
+With the clone-and-run method, choose the version with git instead:
+
+```bash
+git clone --branch v1.0.0 https://github.com/omeg4/nvim-work-portable.git ~/.local/src/nvim-work-portable
+# or, in an existing clone:
+git -C ~/.local/src/nvim-work-portable fetch --tags && git -C ~/.local/src/nvim-work-portable checkout v1.0.0
+~/.local/src/nvim-work-portable/install.sh
 ```
 
 ### After installing
@@ -72,7 +115,7 @@ Environment variables for the one-liner bootstrap:
 | Variable | Default | Purpose |
 |---|---|---|
 | `NVIM_WORK_SRC` | `~/.local/src/nvim-work-portable` | Where the repo is cloned |
-| `NVIM_WORK_REF` | `main` | Branch or tag to clone |
+| `NVIM_WORK_REF` | `main` | Tag or branch to install, e.g. `v1.0.0`. See [Installing a specific version](#installing-a-specific-version). |
 | `NVIM_WORK_REPO` | this repo's URL | Clone from a fork or a company mirror instead |
 
 ## What gets installed where
@@ -158,7 +201,7 @@ export HTTPS_PROXY=http://proxy.example.com:8080
 
 ## Updating and customizing
 
-- **Update everything:** re-run the one-liner, or run `git pull && ./install.sh` in the clone.
+- **Update everything:** re-run the one-liner, or run `git pull && ./install.sh` in the clone. If you pinned a version, run the one-liner with a newer tag.
 - **Change the config:** edit the files under `nvim/` in the clone, then run `./install.sh --config-only`. The installed config is replaced, and the old one is kept as `nvim.bak.<timestamp>`. If you edit `%LOCALAPPDATA%\nvim` directly instead, copy your changes back into the clone before re-running the installer.
 - **Update plugins:** run `nvim-update`, review the lockfile diff, then copy `%LOCALAPPDATA%\nvim\lazy-lock.json` into the clone and commit it. Background update checks are off on purpose.
 - **Bump a tool version:** in `install.sh`, update the version and its SHA-256 together. GitHub shows each release asset's digest; for Node.js, use `SHASUMS256.txt`.

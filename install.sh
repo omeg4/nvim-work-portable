@@ -18,7 +18,7 @@
 #        (append `-s -- [options]` after `bash` to pass options through the pipe)
 #   When piped, the script first clones the repo to ~/.local/src/nvim-work-portable (or updates
 #   an existing clone) and re-runs the install.sh from that clone. Override with NVIM_WORK_SRC,
-#   NVIM_WORK_REPO, NVIM_WORK_REF.
+#   NVIM_WORK_REPO, NVIM_WORK_REF (branch or tag to install, e.g. NVIM_WORK_REF=v1.0.0).
 #
 #   --with-claude --claude-org-uuid UUID
 #                     Also set up Claude Code, locked to your company's Claude for Teams/Enterprise
@@ -50,16 +50,35 @@ if [[ -z $_self || ! -f $_self || ! -d "$(dirname "$_self")/nvim" ]]; then
   command -v git >/dev/null || { echo "ERROR: git is required (install Git for Windows)" >&2; exit 1; }
   if [[ -d $src_dir/.git ]]; then
     echo "==> Updating existing checkout: $src_dir"
-    git -C "$src_dir" pull --ff-only --quiet ||
-      echo "  ! could not fast-forward (local changes?); installing from the checkout as-is" >&2
   elif [[ -e $src_dir ]]; then
     echo "ERROR: $src_dir exists but is not a git checkout; move it or set NVIM_WORK_SRC" >&2
     exit 1
   else
-    echo "==> Cloning $repo_url ($repo_ref) -> $src_dir"
+    echo "==> Cloning $repo_url -> $src_dir"
     mkdir -p "$(dirname "$src_dir")"
-    git clone --quiet --branch "$repo_ref" "$repo_url" "$src_dir"
+    git clone --quiet "$repo_url" "$src_dir"
   fi
+  # Switch to the requested tag or branch. A tag leaves a detached HEAD; a branch is
+  # fast-forwarded. A ref that doesn't exist is an error (a typo must not install something else).
+  git -C "$src_dir" fetch --quiet --tags origin
+  if git -C "$src_dir" rev-parse -q --verify "refs/tags/$repo_ref" >/dev/null; then
+    target="refs/tags/$repo_ref"
+  elif git -C "$src_dir" rev-parse -q --verify "refs/remotes/origin/$repo_ref" >/dev/null; then
+    target="$repo_ref"
+  else
+    echo "ERROR: version '$repo_ref' not found in $repo_url" >&2
+    echo "       list versions with: git ls-remote --tags $repo_url" >&2
+    exit 1
+  fi
+  if git -C "$src_dir" checkout --quiet "$target" 2>/dev/null; then
+    if git -C "$src_dir" symbolic-ref -q HEAD >/dev/null; then
+      git -C "$src_dir" merge --ff-only --quiet "origin/$repo_ref" ||
+        echo "  ! could not fast-forward $repo_ref (local commits?); installing the checkout as-is" >&2
+    fi
+  else
+    echo "  ! could not switch to '$repo_ref' (local changes in $src_dir); installing the checkout as-is" >&2
+  fi
+  echo "==> Installing version: $(git -C "$src_dir" describe --tags --always 2>/dev/null)"
   # Give the real installer the terminal as stdin (the pipe is spent) when one is available.
   if { : </dev/tty; } 2>/dev/null; then
     exec bash "$src_dir/install.sh" "$@" </dev/tty
