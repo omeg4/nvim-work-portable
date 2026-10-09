@@ -52,7 +52,7 @@ less install.sh        # optional: read it first
 
 ### Installing a specific version
 
-Releases are git tags such as `v1.0.0`. Each release's notes, including what changed and its known limitations, are on the [Releases page](https://github.com/omeg4/nvim-work-portable/releases); the newest is always at [releases/latest](https://github.com/omeg4/nvim-work-portable/releases/latest). You can also see the [tags page](https://github.com/omeg4/nvim-work-portable/tags), or run:
+Releases are git tags such as `v1.0.1`. Each release's notes, including what changed and its known limitations, are on the [Releases page](https://github.com/omeg4/nvim-work-portable/releases); the newest is always at [releases/latest](https://github.com/omeg4/nvim-work-portable/releases/latest). You can also see the [tags page](https://github.com/omeg4/nvim-work-portable/tags), or run:
 
 ```bash
 git ls-remote --tags https://github.com/omeg4/nvim-work-portable.git
@@ -61,17 +61,17 @@ git ls-remote --tags https://github.com/omeg4/nvim-work-portable.git
 To install a specific version with the one-liner, put the tag in **both** places:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/omeg4/nvim-work-portable/v1.0.0/install.sh | NVIM_WORK_REF=v1.0.0 bash
+curl -fsSL https://raw.githubusercontent.com/omeg4/nvim-work-portable/v1.0.1/install.sh | NVIM_WORK_REF=v1.0.1 bash
 ```
 
-- **The tag in the URL** (`…/v1.0.0/install.sh`) picks which version of the bootstrap script you download and run.
-- **`NVIM_WORK_REF=v1.0.0`** picks which version is cloned and installed. Without it, the bootstrap installs `main`, whichever URL you downloaded it from.
-- **`NVIM_WORK_REF` goes right before `bash`, not before `curl`.** A variable set in front of a command applies only to that command, and it's `bash` that needs it. `NVIM_WORK_REF=v1.0.0 curl … | bash` silently installs `main`.
+- **The tag in the URL** (`…/v1.0.1/install.sh`) picks which version of the bootstrap script you download and run.
+- **`NVIM_WORK_REF=v1.0.1`** picks which version is cloned and installed. Without it, the bootstrap installs `main`, whichever URL you downloaded it from.
+- **`NVIM_WORK_REF` goes right before `bash`, not before `curl`.** A variable set in front of a command applies only to that command, and it's `bash` that needs it. `NVIM_WORK_REF=v1.0.1 curl … | bash` silently installs `main`.
 
 To pass installer options as well, add `-s --` and the options after `bash`:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/omeg4/nvim-work-portable/v1.0.0/install.sh | NVIM_WORK_REF=v1.0.0 bash -s -- --no-font
+curl -fsSL https://raw.githubusercontent.com/omeg4/nvim-work-portable/v1.0.1/install.sh | NVIM_WORK_REF=v1.0.1 bash -s -- --no-font
 ```
 
 Things to know:
@@ -85,9 +85,9 @@ Things to know:
 With the clone-and-run method, choose the version with git instead:
 
 ```bash
-git clone --branch v1.0.0 https://github.com/omeg4/nvim-work-portable.git ~/.local/src/nvim-work-portable
+git clone --branch v1.0.1 https://github.com/omeg4/nvim-work-portable.git ~/.local/src/nvim-work-portable
 # or, in an existing clone:
-git -C ~/.local/src/nvim-work-portable fetch --tags && git -C ~/.local/src/nvim-work-portable checkout v1.0.0
+git -C ~/.local/src/nvim-work-portable fetch --tags --force && git -C ~/.local/src/nvim-work-portable checkout v1.0.1
 ~/.local/src/nvim-work-portable/install.sh
 ```
 
@@ -117,7 +117,7 @@ Environment variables for the one-liner bootstrap:
 | Variable | Default | Purpose |
 |---|---|---|
 | `NVIM_WORK_SRC` | `~/.local/src/nvim-work-portable` | Where the repo is cloned |
-| `NVIM_WORK_REF` | `main` | Tag or branch to install, e.g. `v1.0.0`. See [Installing a specific version](#installing-a-specific-version). |
+| `NVIM_WORK_REF` | `main` | Tag or branch to install, e.g. `v1.0.1`. See [Installing a specific version](#installing-a-specific-version). |
 | `NVIM_WORK_REPO` | this repo's URL | Clone from a fork or a company mirror instead |
 
 ## What gets installed where

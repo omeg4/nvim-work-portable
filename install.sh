@@ -18,7 +18,7 @@
 #        (append `-s -- [options]` after `bash` to pass options through the pipe)
 #   When piped, the script first clones the repo to ~/.local/src/nvim-work-portable (or updates
 #   an existing clone) and re-runs the install.sh from that clone. Override with NVIM_WORK_SRC,
-#   NVIM_WORK_REPO, NVIM_WORK_REF (branch or tag to install, e.g. NVIM_WORK_REF=v1.0.0).
+#   NVIM_WORK_REPO, NVIM_WORK_REF (branch or tag to install, e.g. NVIM_WORK_REF=v1.0.1).
 #
 #   --with-claude --claude-org-uuid UUID
 #                     Also set up Claude Code, locked to your company's Claude for Teams/Enterprise
@@ -60,7 +60,11 @@ if [[ -z $_self || ! -f $_self || ! -d "$(dirname "$_self")/nvim" ]]; then
   fi
   # Switch to the requested tag or branch. A tag leaves a detached HEAD; a branch is
   # fast-forwarded. A ref that doesn't exist is an error (a typo must not install something else).
-  git -C "$src_dir" fetch --quiet --tags origin
+  # --force: release tags are owned upstream, so accept a tag that was moved after you fetched it.
+  if ! git -C "$src_dir" fetch --quiet --tags --force origin; then
+    echo "ERROR: could not fetch from $(git -C "$src_dir" remote get-url origin) (network, proxy or authentication problem?)" >&2
+    exit 1
+  fi
   if git -C "$src_dir" rev-parse -q --verify "refs/tags/$repo_ref" >/dev/null; then
     target="refs/tags/$repo_ref"
   elif git -C "$src_dir" rev-parse -q --verify "refs/remotes/origin/$repo_ref" >/dev/null; then
