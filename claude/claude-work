@@ -1,0 +1,104 @@
+#!/usr/bin/env bash
+# claude-work — enterprise-only launcher for Claude Code.
+#
+# Refuses to start Claude Code unless a *managed* Claude Code policy that pins your company's
+# organization (`forceLoginOrgUUID`) is in effect on this machine. With that policy in place,
+# Claude Code itself rejects claude.ai logins to any other organization (i.e. personal
+# Free/Pro/Max accounts) and blocks ANTHROPIC_API_KEY / ANTHROPIC_AUTH_TOKEN / apiKeyHelper.
+# Docs: https://code.claude.com/docs/en/authentication#restrict-login-to-your-organization
+#       https://code.claude.com/docs/en/managed-settings
+#
+# Usage:
+#   claude-work [claude args...]   launch Claude Code through the guard
+#   claude-work --check            exit 0 if the enterprise policy is in effect, 1 otherwise (quiet)
+#   claude-work --status           print which policy source is in effect
+set -euo pipefail
+
+die() { printf 'claude-work: %s\n' "$*" >&2; exit 1; }
+
+is_windows() { case "$(uname -s)" in MINGW* | MSYS* | CYGWIN*) return 0 ;; *) return 1 ;; esac; }
+
+# Read the JSON policy string from a Windows registry key's `Settings` value (empty if absent).
+reg_settings() {
+  MSYS2_ARG_CONV_EXCL='*' reg.exe query "$1" /v Settings 2>/dev/null |
+    sed -n 's/^[[:space:]]*Settings[[:space:]]\+REG_\(EXPAND_\)\?SZ[[:space:]]\+//p' | tr -d '\r'
+}
+
+# Prints "<source>\t<json>" for the managed-settings source Claude Code applies, or nothing.
+# Mirrors Claude Code's ranking: an admin document (HKLM / managed-settings.json) always wins,
+# and the user-writable HKCU value is only used when no admin document is present.
+policy_source() {
+  local json
+  if is_windows; then
+    json="$(reg_settings 'HKLM\SOFTWARE\Policies\ClaudeCode')"
+    if [[ -n "$json" ]]; then printf 'HKLM\t%s\n' "$json"; return; fi
+    local pf
+    pf="$(cygpath -u "${ProgramW6432:-${PROGRAMFILES:-C:\\Program Files}}")/ClaudeCode/managed-settings.json"
+    if [[ -f "$pf" ]]; then printf 'file:%s\t%s\n' "$pf" "$(tr -d '\r\n' <"$pf")"; return; fi
+    json="$(reg_settings 'HKCU\SOFTWARE\Policies\ClaudeCode')"
+    if [[ -n "$json" ]]; then printf 'HKCU\t%s\n' "$json"; return; fi
+  else
+    local f
+    for f in "/Library/Application Support/ClaudeCode/managed-settings.json" /etc/claude-code/managed-settings.json; do
+      if [[ -f "$f" ]]; then printf 'file:%s\t%s\n' "$f" "$(tr -d '\r\n' <"$f")"; return; fi
+    done
+  fi
+}
+
+# True when the policy JSON pins at least one organization UUID.
+pins_org() {
+  grep -Eq '"forceLoginOrgUUID"[[:space:]]*:[[:space:]]*(\[[[:space:]]*)?"[0-9a-fA-F-]{36}"' <<<"$1"
+}
+
+check_policy() {
+  local src
+  src="$(policy_source)"
+  [[ -n "$src" ]] || return 1
+  pins_org "${src#*$'\t'}"
+}
+
+case "${1:-}" in
+  --check)
+    check_policy
+    exit $?
+    ;;
+  --status)
+    src="$(policy_source)"
+    if [[ -z "$src" ]]; then
+      echo "No Claude Code managed policy found. Claude Code is BLOCKED by claude-work."
+      exit 1
+    fi
+    printf 'Policy source in effect: %s\n' "${src%%$'\t'*}"
+    if pins_org "${src#*$'\t'}"; then
+      echo "forceLoginOrgUUID: set (enterprise-only logins enforced by Claude Code)"
+      exit 0
+    fi
+    echo "forceLoginOrgUUID: NOT set in that source. Claude Code is BLOCKED by claude-work."
+    exit 1
+    ;;
+esac
+
+check_policy || die "no managed policy pinning forceLoginOrgUUID is in effect.
+  Personal/free Claude accounts must not be used for work, so Claude Code will not start.
+  Fix: re-run install.sh --with-claude --claude-org-uuid <your-org-uuid>, or ask IT to deploy
+  Claude Code managed settings. Run 'claude-work --status' for details."
+
+# Credentials that could stand in for the enterprise login. Claude Code blocks most of these
+# under forceLoginOrgUUID anyway; clearing them here keeps the failure mode obvious.
+unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN CLAUDE_CODE_OAUTH_TOKEN \
+  ANTHROPIC_PROFILE ANTHROPIC_FEDERATION_RULE_ID ANTHROPIC_ORGANIZATION_ID \
+  ANTHROPIC_BASE_URL CLAUDE_CODE_USE_BEDROCK CLAUDE_CODE_USE_VERTEX CLAUDE_CODE_USE_FOUNDRY
+
+# Privacy: no usage metrics, error reports, surveys or /feedback uploads.
+# (A managed policy's `env` block takes precedence over these if your company wants otherwise.)
+export DISABLE_TELEMETRY=1
+export DISABLE_ERROR_REPORTING=1
+export CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY=1
+export DISABLE_FEEDBACK_COMMAND=1
+
+# Find the real binary, skipping the `claude` shell function defined in ~/.bashrc.
+real_claude="$(type -P claude || true)"
+[[ -n "$real_claude" ]] || real_claude="$(type -P claude.exe || true)"
+[[ -n "$real_claude" ]] || die "Claude Code is not installed (expected ~/.local/bin/claude.exe)."
+
+exec "$real_claude" "$@"
