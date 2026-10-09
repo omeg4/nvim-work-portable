@@ -10,7 +10,7 @@ It's derived from my personal Neovim config ("Neobruno"), with every plugin revi
 2. **No vulnerabilities or data capture.** No telemetry, no uploading of code or keystrokes, and every download pinned by version and SHA-256.
 3. **LLM tools need an enterprise account.** Claude Code is only installed and enabled when it's locked to your company's organization. Copilot, Codeium and TabNine are removed.
 
-The plugin-by-plugin review, including open risks, is in [REVIEW.md](REVIEW.md).
+The plugin-by-plugin review, including open risks, is in [REVIEW.md](REVIEW.md). It's also published as a formatted page: [Neobruno Plugin Audit](https://claude.ai/artifact/SS9Nbvaxezoe18c9cRMjpq).
 
 ## Install
 
