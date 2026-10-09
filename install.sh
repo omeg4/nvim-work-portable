@@ -14,6 +14,12 @@
 # Every download is pinned to a version AND a SHA-256 digest; a mismatch aborts the install.
 #
 # Usage: ./install.sh [options]
+#    or: curl -fsSL https://raw.githubusercontent.com/omeg4/nvim-work-portable/main/install.sh | bash
+#        (append `-s -- [options]` after `bash` to pass options through the pipe)
+#   When piped, the script first clones the repo to ~/.local/src/nvim-work-portable (or updates
+#   an existing clone) and re-runs the install.sh from that clone. Override with NVIM_WORK_SRC,
+#   NVIM_WORK_REPO, NVIM_WORK_REF.
+#
 #   --with-claude --claude-org-uuid UUID
 #                     Also set up Claude Code, locked to your company's Claude for Teams/Enterprise
 #                     organization (Admin settings > Organization on claude.ai shows the UUID).
@@ -28,6 +34,39 @@
 #                     nvim-work elsewhere so a personal ~/.config/nvim is never overwritten)
 #   -h, --help
 set -euo pipefail
+
+# The whole script is one { ... } block so bash reads all of it before running anything.
+# That matters for `curl | bash`: a truncated download can't run half a script, and commands
+# that read stdin can't swallow the rest of the script from the pipe.
+{
+
+# ─── Remote bootstrap (curl | bash) ──────────────────────────────────────────
+# Piped input has no script file next to an nvim/ directory: clone the repo, then re-run from it.
+_self="${BASH_SOURCE[0]:-}"
+if [[ -z $_self || ! -f $_self || ! -d "$(dirname "$_self")/nvim" ]]; then
+  repo_url="${NVIM_WORK_REPO:-https://github.com/omeg4/nvim-work-portable.git}"
+  repo_ref="${NVIM_WORK_REF:-main}"
+  src_dir="${NVIM_WORK_SRC:-$HOME/.local/src/nvim-work-portable}"
+  command -v git >/dev/null || { echo "ERROR: git is required (install Git for Windows)" >&2; exit 1; }
+  if [[ -d $src_dir/.git ]]; then
+    echo "==> Updating existing checkout: $src_dir"
+    git -C "$src_dir" pull --ff-only --quiet ||
+      echo "  ! could not fast-forward (local changes?); installing from the checkout as-is" >&2
+  elif [[ -e $src_dir ]]; then
+    echo "ERROR: $src_dir exists but is not a git checkout; move it or set NVIM_WORK_SRC" >&2
+    exit 1
+  else
+    echo "==> Cloning $repo_url ($repo_ref) -> $src_dir"
+    mkdir -p "$(dirname "$src_dir")"
+    git clone --quiet --branch "$repo_ref" "$repo_url" "$src_dir"
+  fi
+  # Give the real installer the terminal as stdin (the pipe is spent) when one is available.
+  if { : </dev/tty; } 2>/dev/null; then
+    exec bash "$src_dir/install.sh" "$@" </dev/tty
+  fi
+  exec bash "$src_dir/install.sh" "$@"
+fi
+unset _self
 
 # ─── Pinned versions + SHA-256 (GitHub release asset digests / nodejs.org SHASUMS256.txt) ──────
 # Bump deliberately: update version + hash together after checking the release notes.
@@ -466,3 +505,6 @@ Next steps:
   2. Run: nvim   then   :checkhealth
   3. Commit $NVIM_CFG/lazy-lock.json somewhere you control so future installs are reproducible.
 EOF
+
+exit 0
+}
